@@ -1,0 +1,127 @@
+hub:
+  config:
+    CILogonOAuthenticator:
+      client_id: MYCLIENTID
+      client_secret: MYCLIENTSECRET
+      oauth_callback_url: https://morenet.nrp-nautilus.io/hub/oauth_callback
+      username_claim: "email"
+    JupyterHub:
+      admin_access: true
+      admin_users: ["admin@admin"]
+      authenticator_class: cilogon
+  service:
+    type: ClusterIP
+    annotations: {}
+    ports:
+      nodePort:
+    loadBalancerIP:
+  deploymentStrategy:
+    type: Recreate
+  db:
+    type: sqlite-pvc
+    pvc:
+      accessModes:
+        - ReadWriteOnce
+      storage: 1Gi
+      storageClassName: rook-ceph-block
+  resources:
+    limits:
+      cpu: "2"
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  networkPolicy:
+    enabled: false
+proxy:
+  secretToken: MYSECRETTOKEN
+  service:
+    type: ClusterIP
+  chp:
+    resources:
+      limits:
+        cpu: "2"
+        memory: 1Gi
+      requests:
+        cpu: 200m
+        memory: 512Mi
+singleuser:
+  extraNodeAffinity:
+    required:
+      - matchExpressions:
+          - "key": "topology.kubernetes.io/region"
+            "operator": "In"
+            "values": ["us-west"]
+  cloudMetadata:
+    blockWithIptables: false
+  networkPolicy:
+    enabled: false
+  storage:
+    type: dynamic
+    extraLabels: {}
+    extraVolumes: []
+    extraVolumeMounts: []
+    capacity: 5Gi
+    homeMountPath: /home/jovyan
+    dynamic:
+      storageClass: rook-ceph-block
+      pvcNameTemplate: claim-{username}{servername}
+      volumeNameTemplate: volume-{username}{servername}
+      storageAccessModes: [ReadWriteOnce]
+  image:
+    name: localhost:30081/prp/jupyter-stack/prp
+    tag: latest
+  startTimeout: 600
+  cpu:
+    limit: 3
+    guarantee: 3
+  memory:
+    limit: 10G
+    guarantee: 10G
+  extraResource:
+    limits: {}
+    guarantees: {}
+  cmd: jupyterhub-singleuser
+  defaultUrl: "/lab"
+  profileList:
+    - display_name: Stack Minimal
+      kubespawner_override:
+        image_spec: localhost:30081/prp/jupyter-stack/minimal
+    - display_name: Stack Datascience
+      kubespawner_override:
+        image_spec: localhost:30081/prp/jupyter-stack/datascience
+    - display_name: HPC
+      kubespawner_override:
+        image_spec: gitlab-registry.nrp-nautilus.io/starmswa/hpc-docker/basic:latest
+    - display_name: HPC + Desktop GUI
+      kubespawner_override:
+        image_spec: gitlab-registry.nrp-nautilus.io/czxrf/hpc-docker/basic_gui:latest
+
+scheduling:
+  userScheduler:
+    enabled: false
+# prePuller relates to the hook|continuous-image-puller DaemonsSets
+prePuller:
+  hook:
+    enabled: false
+  continuous:
+    enabled: false
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: haproxy
+  hosts: ["morenet.nrp-nautilus.io"]
+  pathSuffix: ""
+  tls:
+    - hosts:
+        - morenet.nrp-nautilus.io
+
+cull:
+  enabled: true
+  users: false
+  removeNamedServers: false
+  timeout: 3600
+  every: 600
+  concurrency: 10
+  maxAge: 0
