@@ -1,0 +1,5 @@
+reference/*
+**/.ipynb_checkpoints/*
+jupyterhub/morenet.yaml
+jupyterhub/jupyterhub.yaml
+~*.pptx
